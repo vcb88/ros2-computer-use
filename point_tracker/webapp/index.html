@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Point Tracker Visualization</title>
+    <script src="https://static.robotwebtools.org/roslibjs/current/roslib.min.js"></script>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f0f0f0;
+        }
+        #status {
+            padding: 10px;
+            margin-bottom: 20px;
+            border-radius: 5px;
+        }
+        #messageLog {
+            background-color: white;
+            padding: 20px;
+            border-radius: 5px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        #plot {
+            width: 100%;
+            height: 400px;
+            background-color: white;
+            margin-top: 20px;
+            border-radius: 5px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+    </style>
+</head>
+<body>
+    <h1>Point Tracker Visualization</h1>
+    <div id="status">Connecting to ROS...</div>
+    <div id="messageLog">
+        <h2>Latest Message:</h2>
+        <pre id="lastMessage">Waiting for messages...</pre>
+    </div>
+    <div id="plot"></div>
+
+    <script>
+        // Подключение к ROSBridge
+        var ros = new ROSLIB.Ros({
+            url: 'ws://localhost:9090'
+        });
+
+        // Обработка событий подключения
+        ros.on('connection', function() {
+            document.getElementById('status').innerHTML = 'Connected to ROSBridge';
+            document.getElementById('status').style.backgroundColor = '#90EE90';
+        });
+
+        ros.on('error', function(error) {
+            document.getElementById('status').innerHTML = 'Error connecting to ROSBridge';
+            document.getElementById('status').style.backgroundColor = '#FFB6C1';
+        });
+
+        ros.on('close', function() {
+            document.getElementById('status').innerHTML = 'Connection to ROSBridge closed';
+            document.getElementById('status').style.backgroundColor = '#FFB6C1';
+        });
+
+        // Массивы для хранения данных для графика
+        let timeData = [];
+        let pointData = [];
+        let maxPoints = 50;  // Максимальное количество точек на графике
+
+        // Подписка на топик
+        var listener = new ROSLIB.Topic({
+            ros: ros,
+            name: '/point_coords',  // Имя вашего топика
+            messageType: 'std_msgs/msg/Float32MultiArray'  // Тип сообщения
+        });
+
+        // Инициализация графика
+        let trace = {
+            x: [],
+            y: [],
+            type: 'scatter',
+            mode: 'markers',
+            marker: {
+                size: 10,
+                color: 'red'
+            },
+            name: 'Point Position'
+        };
+
+        let layout = {
+            title: 'Point Position Tracker',
+            xaxis: { 
+                title: 'X Coordinate',
+                range: [-12, 12]
+            },
+            yaxis: { 
+                title: 'Y Coordinate',
+                range: [-12, 12]
+            }
+        };
+
+        Plotly.newPlot('plot', [trace], layout);
+
+        // Обработка входящих сообщений
+        let startTime = Date.now();
+        listener.subscribe(function(message) {
+            // Обновление текстового лога
+            document.getElementById('lastMessage').textContent = 
+                JSON.stringify(message, null, 2);
+
+            // Обновление данных для графика
+            let currentTime = (Date.now() - startTime) / 1000;
+            timeData.push(currentTime);
+            // Получаем x и y координаты из массива
+            pointData.push({
+                x: message.data[0],
+                y: message.data[1]
+            });
+
+            // Ограничение количества точек на графике
+            if (timeData.length > maxPoints) {
+                timeData.shift();
+                pointData.shift();
+            }
+
+            // Обновление графика
+            const xData = pointData.map(p => p.x);
+            const yData = pointData.map(p => p.y);
+            Plotly.update('plot', 
+                {x: [xData], y: [yData]},
+                layout);
+        });
+    </script>
+</body>
+</html>

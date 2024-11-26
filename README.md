@@ -1,3 +1,5 @@
+Software in this repository developed by Claude Computer Use model inside of docker container https://github.com/vcb88/computer-use-swdev based on https://github.com/anthropics/anthropic-quickstarts
+
 # ROS2 Web Integration Demo
 
 This project demonstrates the integration of ROS2 with a web interface using rosbridge and React. It includes a ROS2 node that publishes random data, a rosbridge server that enables WebSocket communication, and a React web client that displays the data in real-time.

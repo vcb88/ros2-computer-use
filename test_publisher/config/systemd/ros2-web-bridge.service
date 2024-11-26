@@ -1,0 +1,14 @@
+[Unit]
+Description=ROS2 Web Bridge
+After=network.target
+
+[Service]
+Type=simple
+User=%u
+Environment=PYTHONPATH=/home/computeruse/ros2_py310_env/lib/python3.10/site-packages
+ExecStart=/home/computeruse/ros2_py310_env/bin/python3 -m rosbridge_server.launch_rosbridge --port 9090
+Restart=on-failure
+RestartSec=5s
+
+[Install]
+WantedBy=default.target

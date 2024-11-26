@@ -19,14 +19,21 @@ This project demonstrates the integration of ROS2 with a web interface using ros
    - Connects to rosbridge via WebSocket
    - Displays real-time data from the ROS2 publisher
    - Built with TypeScript and modern React practices
-   - Runs on port 3000
+   - Development: Runs on port 3000 (Vite)
+   - Production: Served via Nginx on port 80
 
 ## Project Structure
 
 ```
 test_publisher/
+├── config/
+│   ├── nginx/                   # Nginx configuration
+│   └── systemd/                 # Systemd service files
 ├── launch/
-│   └── test_system.launch.py    # Launch file for all components
+│   ├── test_system_dev.launch.py    # Development launch file
+│   └── test_system_prod.launch.py   # Production launch file
+├── scripts/
+│   └── setup_production.sh      # Production setup script
 ├── test_publisher/
 │   ├── __init__.py
 │   └── random_publisher.py      # Main ROS2 publisher node
@@ -61,14 +68,20 @@ test_publisher/
    pip install rosbridge-server rospkg
    ```
 
-3. Node.js (v16 or higher) and npm
+3. Node.js (v20 or higher) and npm
    ```bash
    # Verify Node.js installation
-   node --version
+   node --version  # Should be >=20.0.0
    npm --version
    ```
 
+4. For Production:
+   - Nginx
+   - Systemd
+
 ## Installation
+
+### Development Setup
 
 1. Clone the repository:
    ```bash
@@ -90,11 +103,48 @@ test_publisher/
    npm install
    ```
 
+### Production Setup
+
+1. Follow the development setup steps 1-2
+
+2. Run the production setup script:
+   ```bash
+   cd ~/ros2_ws/src/ros2-computer-use/test_publisher/scripts
+   chmod +x setup_production.sh
+   ./setup_production.sh
+   ```
+
 ## Usage
 
-You can run the components either individually or all at once. Here are both approaches:
+### Development Environment
 
-### Running Components Individually (Recommended for Development)
+1. Source the workspace:
+   ```bash
+   source ~/ros2_ws/install/setup.bash
+   ```
+
+2. Launch all components:
+   ```bash
+   ros2 launch test_publisher test_system_dev.launch.py
+   ```
+
+Visit http://localhost:3000 to see the web interface.
+
+### Production Environment
+
+1. Source the workspace:
+   ```bash
+   source ~/ros2_ws/install/setup.bash
+   ```
+
+2. Launch all components:
+   ```bash
+   ros2 launch test_publisher test_system_prod.launch.py
+   ```
+
+Visit http://localhost to see the web interface.
+
+### Running Components Individually (Development)
 
 1. Start the ROS2 publisher:
    ```bash
@@ -110,29 +160,35 @@ You can run the components either individually or all at once. Here are both app
    PYTHONPATH=$PYTHONPATH:/opt/ros/humble/lib/python3.10/site-packages python3 -m rosbridge_server.launch_rosbridge --port 9090
    ```
 
-3. Start the React development server:
+3. Start the Vite development server:
    ```bash
    # Terminal 3
    cd ~/ros2_ws/src/ros2-computer-use/test_publisher/web-client
-   npm start
+   npm run dev
    ```
 
-### Running All Components Together
+### Managing Production Services
 
-1. Source the workspace:
-   ```bash
-   source ~/ros2_ws/install/setup.bash
-   ```
+- Start services:
+  ```bash
+  systemctl --user start ros2-random-publisher
+  systemctl --user start ros2-web-bridge
+  sudo systemctl start nginx
+  ```
 
-2. Launch all components:
-   ```bash
-   ros2 launch test_publisher test_system.launch.py
-   ```
+- Stop services:
+  ```bash
+  systemctl --user stop ros2-random-publisher
+  systemctl --user stop ros2-web-bridge
+  sudo systemctl stop nginx
+  ```
 
-Visit http://localhost:3000 to see the web interface. You should see:
-- A connection status indicator
-- A counter showing received messages
-- The latest received message with random number and timestamp
+- View logs:
+  ```bash
+  journalctl --user -u ros2-random-publisher
+  journalctl --user -u ros2-web-bridge
+  sudo journalctl -u nginx
+  ```
 
 ## Troubleshooting
 
@@ -140,16 +196,24 @@ Visit http://localhost:3000 to see the web interface. You should see:
    - Make sure you're using Python 3.10
    - Verify the PYTHONPATH includes ROS2 packages
    - Check if port 9090 is available
+   - In production, check systemd service logs
 
 2. If the web client shows "Disconnected":
    - Verify rosbridge is running
    - Check browser console for WebSocket errors
+   - In production, verify Nginx WebSocket proxy configuration
    - Ensure firewall allows connection to port 9090
 
 3. If no data appears:
    - Check if the publisher is running with `ros2 topic list`
    - Verify data with `ros2 topic echo /random_data`
    - Check browser console for any errors
+   - In production, check systemd service status
+
+4. Production specific issues:
+   - Check Nginx error logs: `sudo tail -f /var/log/nginx/error.log`
+   - Verify systemd services: `systemctl --user status ros2-*`
+   - Check file permissions in /var/www/ros2-web-client
 
 ## Contributing
 
